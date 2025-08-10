@@ -26,51 +26,63 @@ class BaseBackend(ABC):
     def _filter_headers(self, headers: dict):
         return {k: v for k, v in headers.items() if k.lower() not in EXCLUDE_HEADERS}
 
-    async def _streaming_generator(self, response: httpx.Response) -> AsyncGenerator[bytes, None]:
-        try:
-            async for chunk in response.aiter_bytes():
-                yield chunk
-        except (httpx.StreamClosed, httpx.ReadError):
-            logger.warning("Stream interrupted, likely by client disconnection.")
-
     async def forward_request(self, req: Request, path: str) -> Response:
+        """
+        實現非同步請求轉發，並能智慧判斷使用流式或非流式回應。
+        此版本修正了非同步上下文管理器的生命週期問題。
+        """
         from ..core.constants import BACKEND_TIMEOUT_SECONDS
 
         url = f"{self.backend_url}/{path}"
         headers = self._filter_headers(dict(req.headers))
         headers.pop("host", None)
-
+        request_body = await req.body()
         client = get_client()
 
-        # ✅ 讀取完整的請求體，而不是以流式轉發
-        request_body = await req.body()
-
+        # 步驟 1: 手動建立請求並發送，但不使用 `async with`
         try:
-            async with client.stream(
+            req_for_httpx = client.build_request(
                 method=req.method,
                 url=url,
                 headers=headers,
                 params=req.query_params,
-                # ✅ 將完整的請求體傳遞給後端
                 content=request_body,
-                cookies=req.cookies,
-                timeout=BACKEND_TIMEOUT_SECONDS
-            ) as r:
-                content_type = r.headers.get("content-type", "")
-
-                if "text/event-stream" in content_type.lower():
-                    return StreamingResponse(
-                        self._streaming_generator(r),
-                        status_code=r.status_code,
-                        headers=self._filter_headers(dict(r.headers))
-                    )
-                else:
-                    body = await r.aread()
-                    return Response(
-                        content=body,
-                        status_code=r.status_code,
-                        headers=self._filter_headers(dict(r.headers))
-                    )
+                timeout=BACKEND_TIMEOUT_SECONDS,
+            )
+            response = await client.send(req_for_httpx, stream=True)
         except httpx.ConnectError as e:
             logger.error("Cannot connect to backend service at %s: %s", self.backend_url, e)
             return Response("Backend service is unavailable.", status_code=503)
+
+        # 步驟 2: 檢查回應類型
+        content_type = response.headers.get("content-type", "")
+
+        # 對於非流式回應，讀取完畢後手動關閉連線
+        if "text/event-stream" not in content_type.lower():
+            try:
+                body = await response.aread()
+                return Response(
+                    content=body,
+                    status_code=response.status_code,
+                    headers=self._filter_headers(dict(response.headers)),
+                )
+            finally:
+                await response.aclose()
+        
+        # 步驟 3: 對於流式回應，建立一個生成器來管理連線生命週期
+        async def streaming_generator(res: httpx.Response):
+            try:
+                async for chunk in res.aiter_bytes():
+                    yield chunk
+            except (httpx.StreamClosed, httpx.ReadError):
+                logger.warning("Stream interrupted, likely by client disconnection.")
+            finally:
+                # 確保在生成器結束時（無論正常或異常），連線都被關閉
+                await res.aclose()
+                logger.info("Backend response stream closed.")
+
+        return StreamingResponse(
+            streaming_generator(response),
+            status_code=response.status_code,
+            headers=self._filter_headers(dict(response.headers)),
+        )
