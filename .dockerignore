@@ -1,0 +1,47 @@
+# 系統與編輯器相關檔案
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+*.log
+*.tmp
+tmp/
+
+# 環境與憑證檔案
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.crt
+*.cert
+
+# Python 相關檔案
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.mypy_cache/
+
+# Docker 相關
+.dockerignore
+Dockerfile
+docker-compose.yml
+build/
+dist/
+*.whl
+*.egg-info/
+
+# 測試與文件
+tests/
