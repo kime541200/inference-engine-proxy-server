@@ -22,7 +22,6 @@ def get_all_metrics_from_cache() -> List[Dict[str, Any]]:
         })
     return results
 
-
 async def choose_backend() -> Optional[Union[LlamacppBackend, VllmBackend]]:
     """
     Chooses the best backend based on metrics from the cache.

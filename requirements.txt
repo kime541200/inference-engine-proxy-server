@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+httpx
+prometheus-client
+python-dotenv
+tiktoken
+rich

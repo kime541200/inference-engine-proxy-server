@@ -7,7 +7,7 @@ from .base import BaseBackend
 from ..core.constants import MAX_ALLOWED_DEFERRED, MAX_ALLOWED_REQUEST_QUEUE
 
 # Add a logger for this module
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("backend_vllm")
 
 
 class VllmBackend(BaseBackend):
@@ -41,7 +41,7 @@ class VllmBackend(BaseBackend):
         try:
             from ..core.http_client import get_client
             client = get_client()
-            r = await client.get(f"{self.backend_url}/metrics", timeout=1.0)
+            r = await client.get(f"{self.backend_url}/metrics", timeout=5.0)
             
             if r.status_code == 200:
                 for family in text_string_to_metric_families(r.text):

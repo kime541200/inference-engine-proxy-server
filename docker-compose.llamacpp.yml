@@ -14,6 +14,39 @@ networks:
         - subnet: 10.99.0.0/24
 
 services:
+  nginx:
+    image: nginx:1.27.4
+    container_name: inference-engine-proxy-server-nginx
+    env_file:
+      - .env
+    depends_on:
+      - proxy
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # 有需要的話可以把ssl也掛進去
+    ports:
+      - "${PORT}:8888"
+    networks:
+      - dev
+
+  proxy:
+    image: inference-engine-proxy-server:0808
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inference-engine-proxy-server
+    env_file:
+      - .env
+    depends_on:
+      llm-1:
+        condition: service_healthy
+      llm-2:
+        condition: service_healthy
+    networks:
+      - dev
+    volumes:
+      - ./:/app
+
   llm-1:
     image: ghcr.io/ggml-org/llama.cpp:server-cuda-b6123
     labels:
@@ -81,6 +114,9 @@ services:
               capabilities: ["gpu"]
               device_ids: ["0"]
     healthcheck: *llamacpp-common-healthcheck
+    depends_on:
+      llm-1:
+        condition: service_healthy
     entrypoint: ""
     restart: always
     command: >
@@ -104,40 +140,3 @@ services:
     networks:
       - dev
   
-  proxy:
-    image: inference-engine-proxy-server:0808
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: inference-engine-proxy-server
-    env_file:
-      - .env
-    depends_on:
-      llm-1:
-        condition: service_healthy
-      llm-2:
-        condition: service_healthy
-    healthcheck:
-      test: "curl -f http://localhost:8888/health || exit 1"
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    networks:
-      - dev
-
-  nginx:
-    image: nginx:1.27.4
-    container_name: inference-engine-proxy-server-nginx
-    env_file:
-      - .env
-    depends_on:
-      - proxy
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      # 有需要的話可以把ssl也掛進去
-    ports:
-      - "${PORT}:8888"
-    networks:
-      - dev
-

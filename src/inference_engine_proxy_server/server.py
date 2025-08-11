@@ -2,12 +2,10 @@ import logging
 import time
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html, get_swagger_ui_oauth2_redirect_html
 
 # -------------------- 基本設定 --------------------
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("llm-proxy")
+logger = logging.getLogger("proxy-server")
 
 
 # -------------------- 工具函式 --------------------
@@ -28,16 +26,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# 掛載靜態文件
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-
-@app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
-async def proxy(full_path: str, request: Request):
-    backend = await choose_backend()
-    if not backend:
-        return Response("No backend available", status_code=503)
-    return await backend.forward_request(request, full_path)
 
 
 @app.get("/health")
@@ -59,31 +47,14 @@ async def health():
     }
 
 
-@app.get("/docs", include_in_schema=False)
-async def custom_swagger_ui_html():
-    return get_swagger_ui_html(
-        openapi_url=app.openapi_url,
-        title=app.title + " - Swagger UI",
-        oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
-        swagger_js_url=f"/static/swagger-ui-bundle.js",
-        swagger_css_url=f"/static/swagger-ui.css",
-    )
-
-
-@app.get(app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
-async def swagger_ui_redirect():
-    return get_swagger_ui_oauth2_redirect_html()
-
-
-@app.get("/redoc", include_in_schema=False)
-async def redoc_html():
-    return get_redoc_html(
-        openapi_url=app.openapi_url,
-        title=app.title + " - ReDoc",
-        redoc_js_url="/static/redoc.standalone.js",
-    )
-
-
 @app.get("/")
 async def read_root():
     return {"message": "Welcome to vLLM/llama.cpp inference engine proxy server!"}
+
+
+@app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+async def proxy(full_path: str, request: Request):
+    backend = await choose_backend()
+    if not backend:
+        return Response("No backend available", status_code=503)
+    return await backend.forward_request(request, full_path)
