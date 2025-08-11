@@ -115,8 +115,6 @@ services:
       start_period: 10s
     networks:
       - dev
-    volumes:
-      - ./:/app
 
   nginx:
     image: nginx:1.27.4
