@@ -21,7 +21,17 @@ services:
     env_file:
       - .env
     volumes:
-      - ${MODEL_DIR}:${MODEL_DIR}
+      - type: bind
+        source: /etc/localtime
+        target: /etc/localtime
+        read_only: true
+      - type: bind
+        source: /etc/timezone
+        target: /etc/timezone
+        read_only: true
+      - type: bind
+        source: ${MODEL_DIR}
+        target: ${MODEL_DIR}
     container_name: llm-1
     deploy:
       resources:
