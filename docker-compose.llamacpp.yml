@@ -36,9 +36,9 @@ services:
     command: >
       ./llama-server
       -m ${MODEL_DIR}/${MODEL}
-      -c 4096
+      -c 32768
       -ngl 99
-      -a ${MODEL}
+      -a ${SERVED_MODEL_NAME}
       -fa
       --no-webui
       --metrics
@@ -76,9 +76,9 @@ services:
     command: >
       ./llama-server
       -m ${MODEL_DIR}/${MODEL}
-      -c 4096
+      -c 32768
       -ngl 99
-      -a ${MODEL}
+      -a ${SERVED_MODEL_NAME}
       -fa
       --no-webui
       --metrics

@@ -33,39 +33,39 @@
 
 ```mermaid
 graph TD
-    subgraph "用戶端"
+    subgraph Client
         User[👤 User / Client App]
     end
 
-    subgraph "基礎設施"
-        NGINX[🌐 NGINX Reverse Proxy]
+    subgraph Infra
+        NGINX[NGINX Reverse Proxy]
     end
 
-    subgraph "代理伺服器 (Proxy Server)"
-        ProxyApp[🚀 FastAPI Proxy App]
-        CacheRefresher[🔄 Background Cache Refresher]
-        MetricsCache[(📊 Backend Metrics Cache)]
+    subgraph Proxy
+        ProxyApp[FastAPI Proxy App]
+        CacheRefresher[Background Cache Refresher]
+        MetricsCache[(Backend Metrics Cache)]
     end
     
-    subgraph "後端推論引擎 (LLM Backends)"
-        LLM1[🤖 LLM Backend 1 (llama.cpp)]
-        LLM2[🤖 LLM Backend 2 (llama.cpp)]
-        LLM3[🤖 LLM Backend N ...]
+    subgraph LLM_Backends
+        LLM1[LLM Backend 1]
+        LLM2[LLM Backend 2]
+        LLM3[LLM Backend N]
     end
 
-    User -- HTTPS/HTTP Request --> NGINX
-    NGINX -- proxy_pass --> ProxyApp
+    User -->|HTTPS Request| NGINX
+    NGINX -->|proxy_pass| ProxyApp
     
-    ProxyApp -- 1. 讀取快取 --> MetricsCache
-    ProxyApp -- 2. 選擇最佳後端 --> LLM2
+    ProxyApp -->|Read Cache| MetricsCache
+    ProxyApp -->|Select LLM| LLM2
     
-    CacheRefresher -- 定期 (e.g., 3s) --> LLM1
-    CacheRefresher -- 定期 (e.g., 3s) --> LLM2
-    CacheRefresher -- 定期 (e.g., 3s) --> LLM3
-    LLM1 -- /metrics & /health --> CacheRefresher
-    LLM2 -- /metrics & /health --> CacheRefresher
-    LLM3 -- /metrics & /health --> CacheRefresher
-    CacheRefresher -- 更新 --> MetricsCache
+    CacheRefresher -->|Poll| LLM1
+    CacheRefresher -->|Poll| LLM2
+    CacheRefresher -->|Poll| LLM3
+    LLM1 -->|/metrics| CacheRefresher
+    LLM2 -->|/metrics| CacheRefresher
+    LLM3 -->|/metrics| CacheRefresher
+    CacheRefresher -->|Update| MetricsCache
     
 ```
 
