@@ -58,7 +58,7 @@ services:
   llm-2:
     init: true
     image: vllm/vllm-openai:v0.10.0
-    container_name: llm-1
+    container_name: llm-2
     ipc: host
     restart: always
     volumes:
